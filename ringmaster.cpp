@@ -7,6 +7,17 @@
 #include <stdio.h>
 int main(int argc, char *argv[])
 {
+  cout<<"Potato Ringmaster"<<endl;
+  int numberP = 0;
+  int numberH = 0;
+  cout<<"Players = ";
+  cin>>numberP;
+  cout<<endl;
+  cout<<"Hops = ";
+  cin>>numberH;
+  cout<<endl;
+
+  
   int status;
   int ringmaster_fd;//store the ringmaster's fd
   struct addrinfo host_info;
@@ -52,4 +63,23 @@ int main(int argc, char *argv[])
   
   struct sockaddr_storage socket_addr;
   socklen_t socket_add_len = sizeof(sock_addr);
-  int client_connection_fd[]
+  int client_connection_fd[numberP+10];
+  for(int i=0;i<numberP+11;i++){
+    client_connection_fd[i]=accept(ringmaster_fd, (struct sockaddr *)&socket_addr, &socket_addr_len);
+    if(client_connection_fd[i] == -1){
+      cerr<<"Error: cannot accept connection on socket" << endl;
+      return -1;
+    }
+    char buffer[512];
+    recv(client_connection_fd[i], buffer, 9, 0);
+    buffer[9] = 0;
+    cout<< "Server received: "<<buffer<< endl;
+    //test
+    cout<< "player number: "<<i<<endl;
+  }
+  freeaddrinfo(host_info_list);
+  close(socket_fd);
+  return 0;
+}
+  
+  
