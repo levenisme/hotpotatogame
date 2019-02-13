@@ -1,10 +1,11 @@
 #include <iostream>
-#include <string.h>
-#include <sys/types.h>
+#include <cstring>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <unistd.h>
 #include "potato.h"
-#include <stdio.h>
+using namespace std;
+
 int main(int argc, char *argv[])
 {
   cout<<"Potato Ringmaster"<<endl;
@@ -17,6 +18,7 @@ int main(int argc, char *argv[])
   cin>>numberH;
   cout<<endl;
 
+  //initialize potato
   
   int status;
   int ringmaster_fd;//store the ringmaster's fd
