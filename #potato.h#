@@ -7,7 +7,7 @@
 #include <unistd.h>
 struct hotpotato{
   int hops;
-  int playerID[];
+  std::vector<int> playerID;
 };
 typedef struct hotpotato hot_potato;
 

@@ -19,6 +19,8 @@ int main(int argc, char *argv[])
   cout<<endl;
 
   //initialize potato
+  hot_potato potato;
+  potato.hops = numberH;
   
   int status;
   int ringmaster_fd;//store the ringmaster's fd
@@ -44,8 +46,8 @@ int main(int argc, char *argv[])
     cerr<<"Error: cannot create ringmaster's socket"<<endl;
     return -1;
   }
-
-  status = setsockeopt(ringmaster_fd, SOL_SOCKET, SO_REUSEADDR, &YES, sizeof(int));
+  int YES = 1;
+  status = setsockopt(ringmaster_fd, SOL_SOCKET, SO_REUSEADDR, &YES, sizeof(int));
   status = bind(ringmaster_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
   if(status == -1){
     cerr<<"Error: cannot bind socket of ringmaster"<<endl;
@@ -64,9 +66,9 @@ int main(int argc, char *argv[])
   cout<<"waiting for players"<<endl;
   
   struct sockaddr_storage socket_addr;
-  socklen_t socket_add_len = sizeof(sock_addr);
+  socklen_t socket_addr_len = sizeof(socket_addr);
   int client_connection_fd[numberP+10];
-  for(int i=0;i<numberP+11;i++){
+  for(int i=0;i<numberP;i++){
     client_connection_fd[i]=accept(ringmaster_fd, (struct sockaddr *)&socket_addr, &socket_addr_len);
     if(client_connection_fd[i] == -1){
       cerr<<"Error: cannot accept connection on socket" << endl;
@@ -80,7 +82,7 @@ int main(int argc, char *argv[])
     cout<< "player number: "<<i<<endl;
   }
   freeaddrinfo(host_info_list);
-  close(socket_fd);
+  close(ringmaster_fd);
   return 0;
 }
   
