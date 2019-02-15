@@ -4,20 +4,18 @@
 #include <netdb.h>
 #include <unistd.h>
 #include "potato.h"
+#include "ringmaster.h"
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-  cout<<"Potato Ringmaster"<<endl;
-  int numberP = 0;
-  int numberH = 0;
-  cout<<"Players = ";
-  cin>>numberP;
-  cout<<endl;
-  cout<<"Hops = ";
-  cin>>numberH;
-  cout<<endl;
-
+  
+  const char* port = argv[1];
+  int numberP = atoi(argv[2]);
+  int numberH = atoi(argv[3]);
+  cout<<"numberP: "<<numberP<<endl;
+  cout<<"numberH: "<<numberH<<endl;
+	
   //initialize potato
   hot_potato potato;
   potato.hops = numberH;
@@ -27,7 +25,7 @@ int main(int argc, char *argv[])
   struct addrinfo host_info;
   struct addrinfo *host_info_list;
   const char *hostname = NULL;
-  const char *port = "4444";//need to find whether should use this port
+ 
   memset(&host_info,0,sizeof(host_info));
   
   host_info.ai_family = AF_UNSPEC;
@@ -67,20 +65,55 @@ int main(int argc, char *argv[])
   
   struct sockaddr_storage socket_addr;
   socklen_t socket_addr_len = sizeof(socket_addr);
-  int client_connection_fd[numberP+10];
+  int player_fd[numberP];
+  player_info players[numberP];//use an array to store all info of players
+  //store all info into the struct  
   for(int i=0;i<numberP;i++){
-    client_connection_fd[i]=accept(ringmaster_fd, (struct sockaddr *)&socket_addr, &socket_addr_len);
-    if(client_connection_fd[i] == -1){
+    player_fd[i]=accept(ringmaster_fd, (struct sockaddr *)&socket_addr, &socket_addr_len);
+    if(player_fd[i] == -1){
       cerr<<"Error: cannot accept connection on socket" << endl;
       return -1;
     }
-    char buffer[512];
-    recv(client_connection_fd[i], buffer, 9, 0);
-    buffer[9] = 0;
-    cout<< "Server received: "<<buffer<< endl;
-    //test
-    cout<< "player number: "<<i<<endl;
+    int serPort=3000+i;
+    char* buffer=(char*) malloc(100*sizeof(char));
+    memset(buffer, 0 ,100);
+    snprintf(buffer,100,"%d",serPort);
+    char *pport = buffer;
+    cout<<"pport:"<<pport<<endl;
+    players[i].player_port=pport;
+    send(player_fd[i],pport,strlen(pport),0);
+    
+    char *receiveHost=(char*) malloc(100*sizeof(char));
+    memset(receiveHost, 0 ,100);
+
+    //cout<<"receiveHost: "<<receiveHost<<endl;
+    
+  //receive port number from host                                                                
+     recv(player_fd[i], receiveHost, 50, 0);
+     //receiveIP[50] = 0;
+     players[i].player_host=receiveHost;
+     cout<<"receiveHost: "<<players[i].player_host<<endl;
+     // cout<< "player number: "<<i<<endl;
   }
+  //set the info of the left port to it
+
+  for(int i=0;i<numberP;i++){
+    if(i == 0){
+      send(player_fd[i],players[numberP-1].player_port,100,0);
+      send(player_fd[i],players[numberP-1].player_host,100,0);
+    }
+    else{
+    send(player_fd[i],players[i-1].player_port,100,0);
+    send(player_fd[i],players[i-1].player_host,100,0);
+    }
+   }
+  //check the fd[]
+  for(int i=0;i<numberP;i++){
+   cout<<" player_fd"<<i<<":"<<player_fd[i]<<endl;
+   free(players[i].player_port);
+   free(players[i].player_host);
+  }
+  // cout<<"ringmaster_fd: "<<ringmaster_fd<<endl;
   freeaddrinfo(host_info_list);
   close(ringmaster_fd);
   return 0;
