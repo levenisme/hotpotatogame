@@ -5,9 +5,12 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <vector>
+using namespace std;
 struct hotpotato{
   int hops;
-  int playerID[];
+  int end;
+  int playerID[512];
 };
 typedef struct hotpotato hot_potato;
 
