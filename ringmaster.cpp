@@ -10,7 +10,7 @@ using namespace std;
 
 int main(int argc, char *argv[])
 {
-  
+  //get the port, number of players, number of hops 
   const char* port = argv[1];
   int numberP = atoi(argv[2]);
   int numberH = atoi(argv[3]);
@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
   cout<<"Potato Ringmaster"<<endl;
   cout<<"Players = "<<numberP<<endl;
   cout<<"Hops = "<<numberH<<endl;
-      
+  //let the ringmaster be a server
   int status;
   int ringmaster_fd;//store the ringmaster's fd
   struct addrinfo host_info;
@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
   }
 
   ringmaster_fd = socket(host_info_list->ai_family, host_info_list->ai_socktype,host_info_list->ai_protocol);
-  //should pass it to clients
+  
   if(ringmaster_fd==-1){
     cerr<<"Error: cannot create ringmaster's socket"<<endl;
     return -1;
@@ -70,7 +70,8 @@ int main(int argc, char *argv[])
       cerr<<"Error: cannot accept connection on socket" << endl;
       return -1;
     }
-    send(player_fd[i],&numberP,sizeof(int),0);
+    //send the port number to each player
+    send(player_fd[i],&numberP,sizeof(int),MSG_WAITALL);
     cout<<"Player "<<i<<" is ready to play"<<endl;
     int serPort=3000+i;
     char* buffer=(char*) malloc(100*sizeof(char));
@@ -79,23 +80,23 @@ int main(int argc, char *argv[])
     char *pport = buffer;
 
     players[i].player_port=pport;
-    send(player_fd[i],pport,strlen(pport),0);
+    send(player_fd[i],pport,strlen(pport),MSG_WAITALL);
     
     char *receiveHost=(char*) malloc(100*sizeof(char));
     memset(receiveHost, 0 ,100);
     recv(player_fd[i], receiveHost, 50, 0);
     players[i].player_host=receiveHost;
   }
-  //set the info of the left port to it
+  //send the info of the left neighbour to it
 
   for(int i=0;i<numberP;i++){
     if(i == 0){
-      send(player_fd[i],players[numberP-1].player_port,100,0);
-      send(player_fd[i],players[numberP-1].player_host,100,0);
+      send(player_fd[i],players[numberP-1].player_port,100,MSG_WAITALL);
+      send(player_fd[i],players[numberP-1].player_host,100,MSG_WAITALL);
     }
     else{
-    send(player_fd[i],players[i-1].player_port,100,0);
-    send(player_fd[i],players[i-1].player_host,100,0);
+    send(player_fd[i],players[i-1].player_port,100,MSG_WAITALL);
+    send(player_fd[i],players[i-1].player_host,100,MSG_WAITALL);
     }
    }
   //send the potato to a random player
@@ -110,7 +111,7 @@ int main(int argc, char *argv[])
     potato.hops = numberH-1;
     potato.end = 0;
     cout<<"Ready to start the game, sending potato to player "<<random<<endl;
-    send(player_fd[random],&potato,sizeof(hot_potato),0);
+    send(player_fd[random],&potato,sizeof(hot_potato),MSG_WAITALL);
     //receive the potato from the last player
     fd_set fds;
     FD_ZERO(&fds);
@@ -132,7 +133,7 @@ int main(int argc, char *argv[])
     if(recv(it_fd,&potato, sizeof(hot_potato),0)<0){
       cerr<<"cannot receive potato"<<endl;
     }
-    potato.end = 1;
+    potato.end = 1;//change the info, then broadcast to shut down every user
     cout<<"Trace of potato:"<<endl;
     cout<<potato.playerID[numberH-1];
     for(int i = numberH-2;i >= 0;i--){
@@ -140,9 +141,9 @@ int main(int argc, char *argv[])
     }
     cout<<endl;
   }
- 
+  //broadcast
   for(int i=0;i<numberP;i++){
-   send(player_fd[i],&potato,sizeof(hot_potato),0);
+   send(player_fd[i],&potato,sizeof(hot_potato),MSG_WAITALL);
   }
 
   
@@ -150,8 +151,7 @@ int main(int argc, char *argv[])
    free(players[i].player_port);
    free(players[i].player_host);
   }
-  // cout<<"ringmaster_fd: "<<ringmaster_fd<<endl;
-  //  free(potato.playerID);
+ 
   freeaddrinfo(host_info_list);
   close(ringmaster_fd);
   return 0;

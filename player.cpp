@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "ringmaster.h"
 using namespace std;
+//use the port that the ringmaster assigned to build a socket and listen
 int beServer(char* port,int ringmaster_fd){
   int status;
   int socket_fd;
@@ -23,7 +24,7 @@ int beServer(char* port,int ringmaster_fd){
     cerr << "Error: cannot get address info for host" << endl;
     cerr << "  (" << hostname << "," << port << ")" << endl;
     return -1;
-  } //if
+  } 
 
   socket_fd = socket(host_info_list->ai_family, 
 		     host_info_list->ai_socktype, 
@@ -32,7 +33,7 @@ int beServer(char* port,int ringmaster_fd){
     cerr << "Error: cannot create socket" << endl;
     cerr << "  (" << hostname << "," << port << ")" << endl;
    return -1;
-  } //if
+  } 
 
   int yes = 1;
   status = setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
@@ -47,14 +48,15 @@ int beServer(char* port,int ringmaster_fd){
     cerr << "Error: cannot listen on socket" << endl; 
     cerr << "  (" << hostname << "," << port << ")" << endl;
     return -1;
-  } //if
-  
+  } 
+  //send the infomation of host to ringmaster
   char myhost[100];
   gethostname(myhost, 100);
-  send(ringmaster_fd,myhost,strlen(myhost),0);
+  send(ringmaster_fd,myhost,strlen(myhost),MSG_WAITALL);
   freeaddrinfo(host_info_list);
   return socket_fd;
 }
+//connect the left neighbour
 int beClientofL(char* playerL_host,char* playerL_port){
   int status;
   int socket_fd;
@@ -95,6 +97,7 @@ int beClientofL(char* playerL_host,char* playerL_port){
 
 int main(int argc, char *argv[])
 {
+  //connect ringmaster
   int status;
   int ringmaster_fd;
   struct addrinfo host_info;
@@ -130,6 +133,7 @@ int main(int argc, char *argv[])
     return -1;
   }
   int numberP=0;
+  //receive the information of the number of players 
   recv(ringmaster_fd,&numberP,sizeof(int),0);
 
   char receivefd[512];
@@ -138,6 +142,7 @@ int main(int argc, char *argv[])
   char* myport = receivefd;
   int mynumber = atoi(myport)-3000;
   cout<<"Connected as player "<<mynumber<<" out of "<<numberP<<" total players"<<endl;
+  //differentiate the neighbours
   int myleft = mynumber == 0? numberP-1:mynumber-1;
   int myright = mynumber == numberP-1? 0:mynumber+1;
   int server_fd = beServer(myport,ringmaster_fd);
@@ -147,7 +152,7 @@ int main(int argc, char *argv[])
   recv(ringmaster_fd, playerL_host, 100, 0);
   int myplayerL_fd = beClientofL(playerL_host,playerL_port);
 
-  //accept connection
+  //accept connection from the right neighbor
   struct sockaddr_storage socket_addr;
   socklen_t socket_addr_len = sizeof(socket_addr);
   int myplayerR_fd;
@@ -165,7 +170,7 @@ int main(int argc, char *argv[])
   memset(&potato, 0, sizeof(hot_potato));
   srand((unsigned int)time (NULL));
   while(1){
-    
+    //receive potato either from the ringmaster or the neighbors
     FD_ZERO(&fds);
     FD_SET(ringmaster_fd,&fds);
     FD_SET(myplayerR_fd,&fds);
@@ -182,24 +187,25 @@ int main(int argc, char *argv[])
     if(recv(receive_fd,&potato, sizeof(hot_potato),0)<0){
       cerr<<"cannot receive potato"<<endl;
     }
-
+    //game end, need to close
     if(potato.end == 1){
       break;
     }
-
+    //receive the potato, send the potato to neighbors
     else if(potato.hops>0){
       int random = rand()%2;
       int mynumber = atoi(myport)-3000;
       potato.playerID[potato.hops--] = mynumber;
       int nextnumber = (random == 0)? myleft:myright;
       cout<<"Sending potato to "<<nextnumber<<endl;
-      send(n_fds[random],&potato,sizeof(hot_potato),0);
+      send(n_fds[random],&potato,sizeof(hot_potato),MSG_WAITALL);
     }
+    //game end, return the potato to the ringmaster
     else if(potato.hops == 0){
       int mynumber = atoi(myport)-3000;
       potato.playerID[0] = mynumber;
       cout<<"I'm it"<<endl;
-      send(ringmaster_fd,&potato,sizeof(hot_potato),0);
+      send(ringmaster_fd,&potato,sizeof(hot_potato),MSG_WAITALL);
     }
   }
   freeaddrinfo(host_info_list);
